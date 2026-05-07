@@ -1,0 +1,972 @@
+
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌀 Beyblade Tournament Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root[data-theme="dark"] {
+            --bg: #0f0f1a;
+            --card: #1a1a2e;
+            --card-hover: #252542;
+            --accent: #00d4ff;
+            --accent2: #ff6b6b;
+            --accent3: #ffd93d;
+            --text: #e0e0e0;
+            --text-dim: #888;
+            --border: #2a2a4a;
+            --win: #4ade80;
+            --loss: #f87171;
+            --attack: #ff6b6b;
+            --defense: #4ade80;
+            --stamina: #60a5fa;
+            --balance: #fbbf24;
+            --s-tier: #ff6b6b;
+            --a-tier: #fbbf24;
+            --b-tier: #60a5fa;
+            --c-tier: #a78bfa;
+        }
+
+        :root[data-theme="light"] {
+            --bg: #f0f0f5;
+            --card: #ffffff;
+            --card-hover: #f5f5fa;
+            --accent: #0088cc;
+            --accent2: #cc4444;
+            --accent3: #cc9900;
+            --text: #1a1a2e;
+            --text-dim: #666;
+            --border: #d0d0e0;
+            --win: #22aa44;
+            --loss: #cc3333;
+            --attack: #cc4444;
+            --defense: #22aa44;
+            --stamina: #2266cc;
+            --balance: #cc8800;
+            --s-tier: #cc3333;
+            --a-tier: #cc8800;
+            --b-tier: #2266cc;
+            --c-tier: #7744bb;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+            min-height: 100vh;
+            transition: background 0.3s, color 0.3s;
+        }
+
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 50px;
+            padding: 10px 20px;
+            cursor: pointer;
+            font-size: 1.2rem;
+            transition: transform 0.2s;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .theme-toggle:hover { transform: scale(1.1); }
+
+        header {
+            text-align: center;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, var(--card) 0%, #16213e 100%);
+            border-radius: 16px;
+            margin-bottom: 30px;
+            border: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
+        }
+
+        header::before {
+            content: '🌀';
+            position: absolute;
+            font-size: 200px;
+            opacity: 0.03;
+            top: -40px;
+            right: -20px;
+            animation: spin 20s linear infinite;
+        }
+
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+        h1 { font-size: 2.5rem; margin-bottom: 10px; background: linear-gradient(90deg, var(--accent), var(--accent3)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .subtitle { color: var(--text-dim); font-size: 1.1rem; }
+
+        .stats-bar {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid var(--border);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .stat-card:hover { transform: translateY(-3px); box-shadow: 0 10px 30px rgba(0,212,255,0.1); }
+
+        .stat-value { font-size: 2rem; font-weight: bold; color: var(--accent); }
+        .stat-label { color: var(--text-dim); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; margin-top: 5px; }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .panel {
+            background: var(--card);
+            border-radius: 16px;
+            padding: 25px;
+            border: 1px solid var(--border);
+            transition: background 0.3s;
+        }
+
+        .panel h2 {
+            font-size: 1.3rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--accent);
+        }
+        .panel h2 span { font-size: 1.5rem; }
+
+        .leaderboard { width: 100%; border-collapse: collapse; }
+        .leaderboard th {
+            text-align: left;
+            padding: 12px 10px;
+            color: var(--text-dim);
+            font-weight: 600;
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid var(--border);
+        }
+        .leaderboard td { padding: 12px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        .leaderboard tr:hover { background: var(--card-hover); cursor: pointer; }
+        .leaderboard tr:nth-child(1) { background: rgba(255, 215, 0, 0.08); }
+        .leaderboard tr:nth-child(2) { background: rgba(192, 192, 192, 0.05); }
+        .leaderboard tr:nth-child(3) { background: rgba(205, 127, 50, 0.05); }
+
+        .rank { font-weight: bold; font-size: 1.1rem; width: 40px; }
+        .rank-1 { color: #ffd700; }
+        .rank-2 { color: #c0c0c0; }
+        .rank-3 { color: #cd7f32; }
+
+        .bey-name { font-weight: 600; font-size: 1rem; }
+        .bey-type {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .type-Attack { background: rgba(255,107,107,0.2); color: var(--attack); }
+        .type-Defense { background: rgba(74,222,128,0.2); color: var(--defense); }
+        .type-Stamina { background: rgba(96,165,250,0.2); color: var(--stamina); }
+        .type-Balance { background: rgba(251,191,36,0.2); color: var(--balance); }
+
+        .elo { font-weight: bold; color: var(--accent); font-size: 1rem; }
+        .peak { color: var(--text-dim); font-size: 0.8rem; }
+        .record { font-family: monospace; font-size: 0.9rem; }
+        .wr { font-weight: 600; font-size: 0.9rem; }
+        .wr-high { color: var(--win); }
+        .wr-low { color: var(--loss); }
+
+        .sparkline { width: 80px; height: 30px; }
+        .sparkline svg { width: 100%; height: 100%; }
+
+        .badges { display: flex; gap: 4px; flex-wrap: wrap; }
+        .badge {
+            font-size: 0.65rem;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .badge-streak { background: linear-gradient(135deg, #ff6b6b, #ffd93d); color: #000; }
+        .badge-unstoppable { background: linear-gradient(135deg, #ff0000, #ff6b6b); color: #fff; }
+        .badge-champ { background: linear-gradient(135deg, #ffd700, #ffaa00); color: #000; }
+        .badge-veteran { background: linear-gradient(135deg, #3b82f6, #60a5fa); color: #fff; }
+        .badge-comeback { background: linear-gradient(135deg, #10b981, #34d399); color: #fff; }
+
+        .tier-grid { display: grid; grid-template-columns: 60px 1fr; gap: 10px; }
+        .tier-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: 900;
+            border-radius: 12px;
+            min-height: 80px;
+        }
+        .tier-s { background: var(--s-tier); color: #fff; }
+        .tier-a { background: var(--a-tier); color: #000; }
+        .tier-b { background: var(--b-tier); color: #fff; }
+        .tier-c { background: var(--c-tier); color: #fff; }
+        .tier-items {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            padding: 10px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+        .tier-item {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: 1px solid var(--border);
+            background: var(--card);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .tier-item:hover {
+            background: var(--accent);
+            color: #000;
+            transform: translateY(-2px);
+        }
+
+        .motw {
+            background: linear-gradient(135deg, rgba(0,212,255,0.1), rgba(255,107,107,0.1));
+            border: 2px solid var(--accent);
+            border-radius: 16px;
+            padding: 25px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .motw::before {
+            content: '⭐';
+            position: absolute;
+            font-size: 150px;
+            opacity: 0.05;
+            top: -30px;
+            left: -20px;
+        }
+        .motw-vs {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin: 20px 0;
+        }
+        .motw-score {
+            font-size: 3rem;
+            background: linear-gradient(90deg, var(--accent), var(--accent3));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .motw-meta { color: var(--text-dim); font-size: 0.9rem; }
+        .motw-reason {
+            display: inline-block;
+            margin-top: 15px;
+            padding: 8px 16px;
+            background: var(--card);
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: var(--accent);
+            border: 1px solid var(--border);
+        }
+
+        .upset-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            background: rgba(255,255,255,0.03);
+            border-left: 4px solid var(--accent2);
+        }
+        .upset-gap {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: var(--accent2);
+            min-width: 60px;
+        }
+        .upset-details { flex: 1; }
+        .upset-winner { font-weight: 600; color: var(--win); }
+        .upset-loser { color: var(--text-dim); }
+
+        .matrix-table { width: 100%; border-collapse: collapse; }
+        .matrix-table th, .matrix-table td {
+            padding: 12px;
+            text-align: center;
+            border: 1px solid var(--border);
+        }
+        .matrix-table th {
+            background: var(--card-hover);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+        .matrix-cell {
+            font-weight: bold;
+            font-size: 1.1rem;
+            transition: transform 0.2s;
+        }
+        .matrix-cell:hover { transform: scale(1.1); }
+        .matrix-high { color: var(--win); }
+        .matrix-mid { color: var(--accent3); }
+        .matrix-low { color: var(--loss); }
+
+        .recap-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; }
+        .recap-card {
+            background: linear-gradient(135deg, var(--card), var(--card-hover));
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+        .recap-card h3 { font-size: 0.9rem; color: var(--text-dim); text-transform: uppercase; margin-bottom: 10px; }
+        .recap-card .value { font-size: 1.8rem; font-weight: bold; color: var(--accent); }
+        .recap-card .name { font-size: 1rem; margin-top: 5px; }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal {
+            background: var(--card);
+            border-radius: 20px;
+            max-width: 700px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+        .modal-header {
+            padding: 30px;
+            background: linear-gradient(135deg, var(--card) 0%, #16213e 100%);
+            border-radius: 20px 20px 0 0;
+            position: relative;
+        }
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 1.5rem;
+            cursor: pointer;
+            background: none;
+            border: none;
+            color: var(--text);
+        }
+        .modal-body { padding: 25px; }
+        .modal-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .modal-stat { text-align: center; }
+        .modal-stat .num { font-size: 1.5rem; font-weight: bold; color: var(--accent); }
+        .modal-stat .lbl { font-size: 0.8rem; color: var(--text-dim); }
+        .modal-chart { height: 200px; margin: 20px 0; }
+        .recent-list { display: flex; flex-direction: column; gap: 8px; }
+        .recent-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+            font-size: 0.9rem;
+        }
+        .recent-w { color: var(--win); font-weight: bold; }
+        .recent-l { color: var(--loss); font-weight: bold; }
+
+        .match-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            background: rgba(255,255,255,0.03);
+            transition: background 0.2s;
+        }
+        .match-item:hover { background: rgba(255,255,255,0.06); }
+        .match-vs { display: flex; align-items: center; gap: 10px; flex: 1; }
+        .match-winner { font-weight: bold; color: var(--win); }
+        .match-loser { color: var(--text-dim); }
+        .match-score { font-family: monospace; font-weight: bold; padding: 2px 10px; background: var(--bg); border-radius: 6px; }
+        .match-meta { color: var(--text-dim); font-size: 0.8rem; text-align: right; }
+
+        .tourney-list { display: flex; flex-direction: column; gap: 10px; }
+        .tourney-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 10px;
+            border-left: 4px solid var(--accent);
+        }
+        .tourney-info { flex: 1; }
+        .tourney-name { font-weight: 600; font-size: 1.05rem; }
+        .tourney-date { color: var(--text-dim); font-size: 0.85rem; }
+        .tourney-winner { text-align: right; }
+        .trophy { font-size: 1.2rem; }
+
+        .h2h-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 15px; }
+        .h2h-card {
+            background: rgba(255,255,255,0.03);
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid var(--border);
+        }
+        .h2h-card h4 { margin-bottom: 10px; color: var(--accent); }
+        .h2h-record { font-size: 1.3rem; font-weight: bold; margin: 10px 0; }
+        .h2h-detail { color: var(--text-dim); font-size: 0.85rem; }
+
+        .chart-container { position: relative; height: 300px; margin-top: 15px; }
+
+        .badge-legend {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+            padding: 15px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+        .badge-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.8rem;
+            color: var(--text-dim);
+        }
+
+        .matrix-explanation {
+            color: var(--text-dim);
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+            border-left: 3px solid var(--accent);
+        }
+
+        .h2h-compare {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+        .h2h-compare select {
+            background: var(--card);
+            color: var(--text);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        .h2h-compare button {
+            background: var(--accent);
+            color: #000;
+            border: none;
+            border-radius: 8px;
+            padding: 8px 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .h2h-compare button:hover {
+            transform: scale(1.05);
+        }
+        .h2h-result {
+            margin-top: 15px;
+            padding: 15px;
+            background: var(--card);
+            border-radius: 10px;
+            border: 1px solid var(--border);
+        }
+        .h2h-result h4 {
+            color: var(--accent);
+            margin-bottom: 10px;
+        }
+        .h2h-result .record {
+            font-size: 2rem;
+            font-weight: bold;
+            text-align: center;
+            margin: 10px 0;
+        }
+        .h2h-result .record span {
+            color: var(--win);
+        }
+        .h2h-result .record span.lose {
+            color: var(--loss);
+        }
+        .h2h-matches {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 10px;
+        }
+        .h2h-match {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 6px;
+            font-size: 0.85rem;
+        }
+        .h2h-match .winner { color: var(--win); font-weight: 600; }
+        .h2h-match .loser { color: var(--text-dim); }
+        .h2h-match .score { font-family: monospace; }
+
+        footer {
+            text-align: center;
+            padding: 30px;
+            color: var(--text-dim);
+            font-size: 0.9rem;
+            border-top: 1px solid var(--border);
+            margin-top: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .grid { grid-template-columns: 1fr; }
+            .modal-stats { grid-template-columns: repeat(2, 1fr); }
+            .tier-grid { grid-template-columns: 50px 1fr; }
+            h1 { font-size: 1.8rem; }
+            .motw-vs { flex-direction: column; gap: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme">🌙</button>
+
+    <div class="container">
+        <header>
+            <h1>🌀 Beyblade Tournament Dashboard</h1>
+            <p class="subtitle">53 Beyblades • 1 Tournaments • 103 Battles</p>
+        </header>
+
+        <div class="stats-bar">
+            <div class="stat-card">
+                <div class="stat-value">53</div>
+                <div class="stat-label">Beyblades</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">1</div>
+                <div class="stat-label">Tournaments</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">103</div>
+                <div class="stat-label">Matches</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">1200</div>
+                <div class="stat-label">Avg ELO</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">10</div>
+                <div class="stat-label">Upsets</div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="panel" style="grid-column: 1 / -1;">
+                <h2><span>📅</span> Season Recap</h2>
+                <div class="recap-grid">
+                    <div class="recap-card"><h3>👑 Highest ELO Ever</h3><div class="value">1312</div><div class="name">Meteo L Drago</div></div>
+<div class="recap-card"><h3>⚔️ Most Battles</h3><div class="value">9</div><div class="name">Fusion Hades</div></div>
+<div class="recap-card"><h3>📈 Best Win Rate</h3><div class="value">100.0%</div><div class="name">Meteo L Drago</div></div>
+<div class="recap-card"><h3>🏆 Most Titles</h3><div class="value">1</div><div class="name">Meteo L Drago</div></div>
+<div class="recap-card"><h3>🔥 Longest Streak</h3><div class="value">7</div><div class="name">Meteo L Drago</div></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="panel" style="grid-column: 1 / -1;">
+                <h2><span>⭐</span> Match of the Week</h2>
+                <div class="motw"><div class="motw-vs"><span style="color:var(--win)">Storm Pegasus</span><span style="color:var(--text-dim)">vs</span><span style="color:var(--loss)">War Ares</span></div><div class="motw-score">3 - 2</div><div class="motw-meta">April 2026 Season • Winners • 2026-05-06</div><div class="motw-reason">⭐ Closest match of the season!</div></div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="panel" style="grid-column: 1 / -1;">
+                <h2><span>🏆</span> Tier List</h2>
+                <div class="tier-grid">
+                    <div class="tier-label tier-s">S</div><div class="tier-items"><span style="color:var(--text-dim);font-size:0.85rem">Empty</span></div><div class="tier-label tier-a">A</div><div class="tier-items"><span class="tier-item" onclick="showProfile(24)">Meteo L Drago</span><span class="tier-item" onclick="showProfile(38)">Twisted Zurafa</span></div><div class="tier-label tier-b">B</div><div class="tier-items"><span class="tier-item" onclick="showProfile(30)">Flame Dragonis</span><span class="tier-item" onclick="showProfile(14)">Duo Uranus</span><span class="tier-item" onclick="showProfile(20)">Fusion Hades</span><span class="tier-item" onclick="showProfile(28)">Scythe Kronos</span><span class="tier-item" onclick="showProfile(50)">Phantom Orion</span><span class="tier-item" onclick="showProfile(49)">Lightning L Drago</span><span class="tier-item" onclick="showProfile(18)">Gravity Perseus</span><span class="tier-item" onclick="showProfile(5)">War Ares</span><span class="tier-item" onclick="showProfile(17)">Sol Blaze</span><span class="tier-item" onclick="showProfile(11)">Screw Capricorn</span><span class="tier-item" onclick="showProfile(44)">Scythe Unicorno</span><span class="tier-item" onclick="showProfile(27)">Vulcan Horuseus</span><span class="tier-item" onclick="showProfile(33)">Blitz Prototype</span><span class="tier-item" onclick="showProfile(10)">Diablo Cygnus</span><span class="tier-item" onclick="showProfile(43)">Death Quetzalcoatl</span><span class="tier-item" onclick="showProfile(41)">Flash Sagittarius</span><span class="tier-item" onclick="showProfile(39)">Earth Eagle</span><span class="tier-item" onclick="showProfile(29)">Wing Pegasus</span><span class="tier-item" onclick="showProfile(2)">Fang Leone</span><span class="tier-item" onclick="showProfile(36)">Stickerless Orion</span><span class="tier-item" onclick="showProfile(9)">Bakushin Susanoo</span></div><div class="tier-label tier-c">C</div><div class="tier-items"><span class="tier-item" onclick="showProfile(21)">Kreis Cygnus</span><span class="tier-item" onclick="showProfile(40)">Twisted Tempo</span><span class="tier-item" onclick="showProfile(48)">Burn Beezlebub</span><span class="tier-item" onclick="showProfile(1)">Diablo Scorpio</span><span class="tier-item" onclick="showProfile(8)">Galaxy Pegasus</span><span class="tier-item" onclick="showProfile(22)">Attack Kerbecs</span><span class="tier-item" onclick="showProfile(25)">L Drago Rush</span><span class="tier-item" onclick="showProfile(6)">Storm Pegasus</span><span class="tier-item" onclick="showProfile(45)">Cyclone Eagle</span><span class="tier-item" onclick="showProfile(46)">Rock Diablo</span><span class="tier-item" onclick="showProfile(16)">Ice Titan</span><span class="tier-item" onclick="showProfile(12)">Hasbros Orion</span><span class="tier-item" onclick="showProfile(13)">Rock Leone</span><span class="tier-item" onclick="showProfile(4)">Prototype</span><span class="tier-item" onclick="showProfile(51)">Jade Jupiter</span><span class="tier-item" onclick="showProfile(35)">Mercury Anubis</span><span class="tier-item" onclick="showProfile(7)">Cosmic Pegasus</span><span class="tier-item" onclick="showProfile(19)">Diablo Nemesis</span><span class="tier-item" onclick="showProfile(31)">Ray Striker</span><span class="tier-item" onclick="showProfile(32)">Omega Dragonis</span><span class="tier-item" onclick="showProfile(3)">Evil Befall</span><span class="tier-item" onclick="showProfile(52)">Poison Herogium</span><span class="tier-item" onclick="showProfile(47)">Beat Lynx</span><span class="tier-item" onclick="showProfile(53)">Hells Kerbecs</span><span class="tier-item" onclick="showProfile(23)">L Drago Assault</span><span class="tier-item" onclick="showProfile(34)">Variares</span><span class="tier-item" onclick="showProfile(26)">Nemesis</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="panel" style="grid-column: 1 / -1;">
+                <h2><span>📊</span> Leaderboard</h2>
+                <table class="leaderboard">
+                    <thead>
+                        <tr>
+                            <th>Rank</th>
+                            <th>Beyblade</th>
+                            <th>Type</th>
+                            <th>ELO</th>
+                            <th>Trend</th>
+                            <th>Peak</th>
+                            <th>Record</th>
+                            <th>WR</th>
+                            <th>Streak</th>
+                            <th>Badges</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr onclick="showProfile(24)"><td class="rank rank-1">#1</td><td class="bey-name">Meteo L Drago</td><td><span class="bey-type type-Defense">Defense</span></td><td class="elo">1312</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,30.0 L 13.3,27.1 L 26.7,25.9 L 40.0,24.8 L 53.3,18.0 L 66.7,9.4 L 80.0,0.0" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1312</td><td class="record">7-0</td><td class="wr wr-high">100.0%</td><td>🔥 7</td><td><div class="badges"><span class="badge badge-streak" title="🔥 7 Streak">🔥 7 Streak</span><span class="badge badge-champ" title="🏆 x1">🏆 x1</span><span class="badge badge-comeback" title="💪 Comeback">💪 Comeback</span></div></td></tr>
+<tr onclick="showProfile(38)"><td class="rank rank-2">#2</td><td class="bey-name">Twisted Zurafa</td><td><span class="bey-type type-Balance">Balance</span></td><td class="elo">1302</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,30.0 L 13.3,22.9 L 26.7,25.6 L 40.0,19.1 L 53.3,12.4 L 66.7,6.4 L 80.0,0.0" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1302</td><td class="record">6-1</td><td class="wr wr-high">85.7%</td><td>🔥 4</td><td><div class="badges"><span class="badge badge-streak" title="⚡ 4 Streak">⚡ 4 Streak</span><span class="badge badge-comeback" title="💪 Comeback">💪 Comeback</span></div></td></tr>
+<tr onclick="showProfile(30)"><td class="rank rank-3">#3</td><td class="bey-name">Flame Dragonis</td><td><span class="bey-type type-Balance">Balance</span></td><td class="elo">1260</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,30.0 L 13.3,21.4 L 26.7,23.4 L 40.0,15.2 L 53.3,7.4 L 66.7,0.0 L 80.0,7.8" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1278</td><td class="record">5-2</td><td class="wr wr-high">71.4%</td><td>—</td><td><div class="badges"><span class="badge badge-comeback" title="💪 Comeback">💪 Comeback</span></div></td></tr>
+<tr onclick="showProfile(14)"><td class="rank ">#4</td><td class="bey-name">Duo Uranus</td><td><span class="bey-type type-Defense">Defense</span></td><td class="elo">1250</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,30.0 L 16.0,18.1 L 32.0,20.5 L 48.0,10.3 L 64.0,0.0 L 80.0,12.2" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1270</td><td class="record">4-2</td><td class="wr wr-high">66.7%</td><td>—</td><td><div class="badges"><span class="badge badge-comeback" title="💪 Comeback">💪 Comeback</span></div></td></tr>
+<tr onclick="showProfile(20)"><td class="rank ">#5</td><td class="bey-name">Fusion Hades</td><td><span class="bey-type type-Defense">Defense</span></td><td class="elo">1243</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,30.0 L 10.0,25.2 L 20.0,23.1 L 30.0,20.7 L 40.0,29.9 L 50.0,20.0 L 60.0,11.2 L 70.0,0.0 L 80.0,14.0" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1272</td><td class="record">7-2</td><td class="wr wr-high">77.8%</td><td>—</td><td><div class="badges"><span class="badge badge-comeback" title="💪 Comeback">💪 Comeback</span></div></td></tr>
+<tr onclick="showProfile(28)"><td class="rank ">#6</td><td class="bey-name">Scythe Kronos</td><td><span class="bey-type type-Stamina">Stamina</span></td><td class="elo">1241</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,30.0 L 16.0,22.4 L 32.0,15.2 L 48.0,7.6 L 64.0,0.0 L 80.0,8.0" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1259</td><td class="record">4-2</td><td class="wr wr-high">66.7%</td><td>—</td><td><div class="badges"><span class="badge badge-comeback" title="💪 Comeback">💪 Comeback</span></div></td></tr>
+<tr onclick="showProfile(50)"><td class="rank ">#7</td><td class="bey-name">Phantom Orion</td><td><span class="bey-type type-Stamina">Stamina</span></td><td class="elo">1239</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,30.0 L 16.0,26.5 L 32.0,29.3 L 48.0,13.6 L 64.0,0.0 L 80.0,15.8" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1260</td><td class="record">4-2</td><td class="wr wr-high">66.7%</td><td>—</td><td><div class="badges"><span class="badge badge-comeback" title="💪 Comeback">💪 Comeback</span></div></td></tr>
+<tr onclick="showProfile(49)"><td class="rank ">#8</td><td class="bey-name">Lightning L Drago</td><td><span class="bey-type type-Attack">Attack</span></td><td class="elo">1233</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,30.0 L 16.0,22.2 L 32.0,14.8 L 48.0,7.7 L 64.0,0.0 L 80.0,8.2" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1253</td><td class="record">4-2</td><td class="wr wr-high">66.7%</td><td>—</td><td><div class="badges"><span class="badge badge-comeback" title="💪 Comeback">💪 Comeback</span></div></td></tr>
+<tr onclick="showProfile(18)"><td class="rank ">#9</td><td class="bey-name">Gravity Perseus</td><td><span class="bey-type type-Attack">Attack</span></td><td class="elo">1230</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,30.0 L 20.0,19.5 L 40.0,9.4 L 60.0,0.0 L 80.0,10.6" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1249</td><td class="record">3-2</td><td class="wr wr-high">60.0%</td><td>—</td><td><div class="badges"></div></td></tr>
+<tr onclick="showProfile(5)"><td class="rank ">#10</td><td class="bey-name">War Ares</td><td><span class="bey-type type-Attack">Attack</span></td><td class="elo">1228</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,30.0 L 20.0,19.5 L 40.0,9.9 L 60.0,0.0 L 80.0,11.4" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1247</td><td class="record">3-2</td><td class="wr wr-high">60.0%</td><td>—</td><td><div class="badges"></div></td></tr>
+<tr onclick="showProfile(17)"><td class="rank ">#11</td><td class="bey-name">Sol Blaze</td><td><span class="bey-type type-Defense">Defense</span></td><td class="elo">1222</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,30.0 L 20.0,13.0 L 40.0,16.7 L 60.0,0.0 L 80.0,14.8" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1239</td><td class="record">3-2</td><td class="wr wr-high">60.0%</td><td>—</td><td><div class="badges"></div></td></tr>
+<tr onclick="showProfile(11)"><td class="rank ">#12</td><td class="bey-name">Screw Capricorn</td><td><span class="bey-type type-Attack">Attack</span></td><td class="elo">1221</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,30.0 L 20.0,5.3 L 40.0,0.0 L 60.0,6.6 L 80.0,28.6" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1243</td><td class="record">3-2</td><td class="wr wr-high">60.0%</td><td>—</td><td><div class="badges"></div></td></tr>
+<tr onclick="showProfile(44)"><td class="rank ">#13</td><td class="bey-name">Scythe Unicorno</td><td><span class="bey-type type-Balance">Balance</span></td><td class="elo">1220</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,29.5 L 26.7,0.0 L 53.3,5.9 L 80.0,30.0" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1241</td><td class="record">2-2</td><td class="wr ">50.0%</td><td>—</td><td><div class="badges"></div></td></tr>
+<tr onclick="showProfile(27)"><td class="rank ">#14</td><td class="bey-name">Vulcan Horuseus</td><td><span class="bey-type type-Attack">Attack</span></td><td class="elo">1220</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,30.0 L 20.0,16.2 L 40.0,20.2 L 60.0,0.0 L 80.0,19.4" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1237</td><td class="record">3-2</td><td class="wr wr-high">60.0%</td><td>—</td><td><div class="badges"></div></td></tr>
+<tr onclick="showProfile(33)"><td class="rank ">#15</td><td class="bey-name">Blitz Prototype</td><td><span class="bey-type type-Attack">Attack</span></td><td class="elo">1218</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,23.8 L 16.0,10.8 L 32.0,0.0 L 48.0,30.0 L 64.0,0.5 L 80.0,26.7" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1236</td><td class="record">4-2</td><td class="wr wr-high">66.7%</td><td>—</td><td><div class="badges"></div></td></tr>
+<tr onclick="showProfile(10)"><td class="rank ">#16</td><td class="bey-name">Diablo Cygnus</td><td><span class="bey-type type-Attack">Attack</span></td><td class="elo">1216</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,12.1 L 20.0,30.0 L 40.0,15.6 L 60.0,0.0 L 80.0,15.6" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1234</td><td class="record">3-2</td><td class="wr wr-high">60.0%</td><td>—</td><td><div class="badges"></div></td></tr>
+<tr onclick="showProfile(43)"><td class="rank ">#17</td><td class="bey-name">Death Quetzalcoatl</td><td><span class="bey-type type-Defense">Defense</span></td><td class="elo">1214</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,26.1 L 16.0,13.9 L 32.0,11.5 L 48.0,0.0 L 64.0,16.0 L 80.0,30.0" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1264</td><td class="record">4-2</td><td class="wr wr-high">66.7%</td><td>—</td><td><div class="badges"></div></td></tr>
+<tr onclick="showProfile(41)"><td class="rank ">#18</td><td class="bey-name">Flash Sagittarius</td><td><span class="bey-type type-Attack">Attack</span></td><td class="elo">1214</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,22.6 L 26.7,0.0 L 53.3,9.0 L 80.0,30.0" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1239</td><td class="record">2-2</td><td class="wr ">50.0%</td><td>—</td><td><div class="badges"></div></td></tr>
+<tr onclick="showProfile(39)"><td class="rank ">#19</td><td class="bey-name">Earth Eagle</td><td><span class="bey-type type-Balance">Balance</span></td><td class="elo">1213</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,30.0 L 16.0,17.5 L 32.0,12.8 L 48.0,0.0 L 64.0,13.2 L 80.0,24.5" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1252</td><td class="record">4-2</td><td class="wr wr-high">66.7%</td><td>—</td><td><div class="badges"></div></td></tr>
+<tr onclick="showProfile(29)"><td class="rank ">#20</td><td class="bey-name">Wing Pegasus</td><td><span class="bey-type type-Defense">Defense</span></td><td class="elo">1208</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,30.0 L 26.7,14.6 L 53.3,0.0 L 80.0,14.7" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1226</td><td class="record">2-2</td><td class="wr ">50.0%</td><td>—</td><td><div class="badges"></div></td></tr>
+<tr onclick="showProfile(2)"><td class="rank ">#21</td><td class="bey-name">Fang Leone</td><td><span class="bey-type type-Balance">Balance</span></td><td class="elo">1207</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,12.8 L 20.0,30.0 L 40.0,15.3 L 60.0,0.0 L 80.0,15.3" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1225</td><td class="record">3-2</td><td class="wr wr-high">60.0%</td><td>—</td><td><div class="badges"></div></td></tr>
+<tr onclick="showProfile(36)"><td class="rank ">#22</td><td class="bey-name">Stickerless Orion</td><td><span class="bey-type type-Balance">Balance</span></td><td class="elo">1206</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,30.0 L 26.7,14.8 L 53.3,0.0 L 80.0,16.0" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1225</td><td class="record">2-2</td><td class="wr ">50.0%</td><td>—</td><td><div class="badges"><span class="badge badge-comeback" title="💪 Comeback">💪 Comeback</span></div></td></tr>
+<tr onclick="showProfile(9)"><td class="rank ">#23</td><td class="bey-name">Bakushin Susanoo</td><td><span class="bey-type type-Defense">Defense</span></td><td class="elo">1200</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,30.0 L 26.7,15.0 L 53.3,0.0 L 80.0,13.8" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1217</td><td class="record">2-2</td><td class="wr ">50.0%</td><td>—</td><td><div class="badges"></div></td></tr>
+<tr onclick="showProfile(21)"><td class="rank ">#24</td><td class="bey-name">Kreis Cygnus</td><td><span class="bey-type type-Defense">Defense</span></td><td class="elo">1199</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,11.8 L 26.7,28.9 L 53.3,0.0 L 80.0,30.0" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1217</td><td class="record">2-2</td><td class="wr ">50.0%</td><td>—</td><td><div class="badges"></div></td></tr>
+<tr onclick="showProfile(40)"><td class="rank ">#25</td><td class="bey-name">Twisted Tempo</td><td><span class="bey-type type-Defense">Defense</span></td><td class="elo">1195</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,28.6 L 40.0,0.0 L 80.0,30.0" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1214</td><td class="record">1-2</td><td class="wr wr-low">33.3%</td><td>—</td><td><div class="badges"></div></td></tr>
+<tr onclick="showProfile(48)"><td class="rank ">#26</td><td class="bey-name">Burn Beezlebub</td><td><span class="bey-type type-Stamina">Stamina</span></td><td class="elo">1192</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,30.0 L 40.0,0.0 L 80.0,28.2" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1210</td><td class="record">1-2</td><td class="wr wr-low">33.3%</td><td>—</td><td><div class="badges"></div></td></tr>
+<tr onclick="showProfile(1)"><td class="rank ">#27</td><td class="bey-name">Diablo Scorpio</td><td><span class="bey-type type-Balance">Balance</span></td><td class="elo">1191</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,30.0 L 40.0,0.0 L 80.0,28.8" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1208</td><td class="record">1-2</td><td class="wr wr-low">33.3%</td><td>—</td><td><div class="badges"></div></td></tr>
+<tr onclick="showProfile(8)"><td class="rank ">#28</td><td class="bey-name">Galaxy Pegasus</td><td><span class="bey-type type-Attack">Attack</span></td><td class="elo">1190</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,29.3 L 40.0,0.0 L 80.0,30.0" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1208</td><td class="record">1-2</td><td class="wr wr-low">33.3%</td><td>—</td><td><div class="badges"></div></td></tr>
+<tr onclick="showProfile(22)"><td class="rank ">#29</td><td class="bey-name">Attack Kerbecs</td><td><span class="bey-type type-Attack">Attack</span></td><td class="elo">1189</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,28.6 L 40.0,0.0 L 80.0,30.0" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1208</td><td class="record">1-2</td><td class="wr wr-low">33.3%</td><td>—</td><td><div class="badges"></div></td></tr>
+<tr onclick="showProfile(25)"><td class="rank ">#30</td><td class="bey-name">L Drago Rush</td><td><span class="bey-type type-Attack">Attack</span></td><td class="elo">1189</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,0.0 L 40.0,12.1 L 80.0,30.0" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1220</td><td class="record">1-2</td><td class="wr wr-low">33.3%</td><td>—</td><td><div class="badges"></div></td></tr>
+<tr onclick="showProfile(6)"><td class="rank ">#31</td><td class="bey-name">Storm Pegasus</td><td><span class="bey-type type-Attack">Attack</span></td><td class="elo">1187</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,16.5 L 26.7,0.0 L 53.3,16.5 L 80.0,30.0" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1224</td><td class="record">2-2</td><td class="wr ">50.0%</td><td>—</td><td><div class="badges"></div></td></tr>
+<tr onclick="showProfile(45)"><td class="rank ">#32</td><td class="bey-name">Cyclone Eagle</td><td><span class="bey-type type-Stamina">Stamina</span></td><td class="elo">1184</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,0.0 L 40.0,16.2 L 80.0,30.0" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1221</td><td class="record">1-2</td><td class="wr wr-low">33.3%</td><td>—</td><td><div class="badges"></div></td></tr>
+<tr onclick="showProfile(46)"><td class="rank ">#33</td><td class="bey-name">Rock Diablo</td><td><span class="bey-type type-Balance">Balance</span></td><td class="elo">1182</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,30.0 L 40.0,0.0 L 80.0,28.5" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1200</td><td class="record">1-2</td><td class="wr wr-low">33.3%</td><td>—</td><td><div class="badges"></div></td></tr>
+<tr onclick="showProfile(16)"><td class="rank ">#34</td><td class="bey-name">Ice Titan</td><td><span class="bey-type type-Stamina">Stamina</span></td><td class="elo">1181</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,0.0 L 40.0,15.6 L 80.0,30.0" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1220</td><td class="record">1-2</td><td class="wr wr-low">33.3%</td><td>—</td><td><div class="badges"></div></td></tr>
+<tr onclick="showProfile(12)"><td class="rank ">#35</td><td class="bey-name">Hasbros Orion</td><td><span class="bey-type type-Stamina">Stamina</span></td><td class="elo">1181</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,30.0 L 40.0,0.0 L 80.0,29.1" fill="none" stroke="#4ade80" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1200</td><td class="record">1-2</td><td class="wr wr-low">33.3%</td><td>—</td><td><div class="badges"></div></td></tr>
+<tr onclick="showProfile(13)"><td class="rank ">#36</td><td class="bey-name">Rock Leone</td><td><span class="bey-type type-Defense">Defense</span></td><td class="elo">1179</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,28.6 L 40.0,0.0 L 80.0,30.0" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1200</td><td class="record">1-2</td><td class="wr wr-low">33.3%</td><td>—</td><td><div class="badges"></div></td></tr>
+<tr onclick="showProfile(4)"><td class="rank ">#37</td><td class="bey-name">Prototype</td><td><span class="bey-type type-Attack">Attack</span></td><td class="elo">1175</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,0.0 L 80.0,30.0" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1200</td><td class="record">0-2</td><td class="wr wr-low">—</td><td>—</td><td><div class="badges"></div></td></tr>
+<tr onclick="showProfile(51)"><td class="rank ">#38</td><td class="bey-name">Jade Jupiter</td><td><span class="bey-type type-Balance">Balance</span></td><td class="elo">1173</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,0.0 L 80.0,30.0" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1200</td><td class="record">0-2</td><td class="wr wr-low">—</td><td>—</td><td><div class="badges"></div></td></tr>
+<tr onclick="showProfile(35)"><td class="rank ">#39</td><td class="bey-name">Mercury Anubis</td><td><span class="bey-type type-Attack">Attack</span></td><td class="elo">1173</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,0.0 L 40.0,15.6 L 80.0,30.0" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1210</td><td class="record">1-2</td><td class="wr wr-low">33.3%</td><td>—</td><td><div class="badges"></div></td></tr>
+<tr onclick="showProfile(7)"><td class="rank ">#40</td><td class="bey-name">Cosmic Pegasus</td><td><span class="bey-type type-Attack">Attack</span></td><td class="elo">1172</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,0.0 L 40.0,16.4 L 80.0,30.0" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1210</td><td class="record">1-2</td><td class="wr wr-low">33.3%</td><td>—</td><td><div class="badges"></div></td></tr>
+<tr onclick="showProfile(19)"><td class="rank ">#41</td><td class="bey-name">Diablo Nemesis</td><td><span class="bey-type type-Balance">Balance</span></td><td class="elo">1172</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,0.0 L 80.0,30.0" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1200</td><td class="record">0-2</td><td class="wr wr-low">—</td><td>—</td><td><div class="badges"></div></td></tr>
+<tr onclick="showProfile(31)"><td class="rank ">#42</td><td class="bey-name">Ray Striker</td><td><span class="bey-type type-Balance">Balance</span></td><td class="elo">1172</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,0.0 L 80.0,30.0" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1200</td><td class="record">0-2</td><td class="wr wr-low">—</td><td>—</td><td><div class="badges"></div></td></tr>
+<tr onclick="showProfile(32)"><td class="rank ">#43</td><td class="bey-name">Omega Dragonis</td><td><span class="bey-type type-Attack">Attack</span></td><td class="elo">1171</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,0.0 L 40.0,15.8 L 80.0,30.0" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1210</td><td class="record">1-2</td><td class="wr wr-low">33.3%</td><td>—</td><td><div class="badges"></div></td></tr>
+<tr onclick="showProfile(3)"><td class="rank ">#44</td><td class="bey-name">Evil Befall</td><td><span class="bey-type type-Balance">Balance</span></td><td class="elo">1169</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,0.0 L 40.0,16.1 L 80.0,30.0" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1207</td><td class="record">1-2</td><td class="wr wr-low">33.3%</td><td>—</td><td><div class="badges"></div></td></tr>
+<tr onclick="showProfile(52)"><td class="rank ">#45</td><td class="bey-name">Poison Herogium</td><td><span class="bey-type type-Balance">Balance</span></td><td class="elo">1164</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,0.0 L 80.0,30.0" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1200</td><td class="record">0-2</td><td class="wr wr-low">—</td><td>—</td><td><div class="badges"></div></td></tr>
+<tr onclick="showProfile(47)"><td class="rank ">#46</td><td class="bey-name">Beat Lynx</td><td><span class="bey-type type-Balance">Balance</span></td><td class="elo">1164</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,0.0 L 80.0,30.0" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1200</td><td class="record">0-2</td><td class="wr wr-low">—</td><td>—</td><td><div class="badges"></div></td></tr>
+<tr onclick="showProfile(53)"><td class="rank ">#47</td><td class="bey-name">Hells Kerbecs</td><td><span class="bey-type type-Stamina">Stamina</span></td><td class="elo">1164</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,0.0 L 80.0,30.0" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1200</td><td class="record">0-2</td><td class="wr wr-low">—</td><td>—</td><td><div class="badges"></div></td></tr>
+<tr onclick="showProfile(23)"><td class="rank ">#48</td><td class="bey-name">L Drago Assault</td><td><span class="bey-type type-Attack">Attack</span></td><td class="elo">1163</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,0.0 L 80.0,30.0" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1200</td><td class="record">0-2</td><td class="wr wr-low">—</td><td>—</td><td><div class="badges"></div></td></tr>
+<tr onclick="showProfile(34)"><td class="rank ">#49</td><td class="bey-name">Variares</td><td><span class="bey-type type-Attack">Attack</span></td><td class="elo">1163</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,0.0 L 80.0,30.0" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1200</td><td class="record">0-2</td><td class="wr wr-low">—</td><td>—</td><td><div class="badges"></div></td></tr>
+<tr onclick="showProfile(26)"><td class="rank ">#50</td><td class="bey-name">Nemesis</td><td><span class="bey-type type-Balance">Balance</span></td><td class="elo">1163</td><td><svg viewBox="0 0 80 30" class="sparkline"><path d="M 0.0,0.0 L 80.0,30.0" fill="none" stroke="#f87171" stroke-width="2" stroke-linecap="round"/></svg></td><td class="peak">1200</td><td class="record">0-2</td><td class="wr wr-low">—</td><td>—</td><td><div class="badges"></div></td></tr>
+                    </tbody>
+                </table>
+                <div class="badge-legend">
+                    <div class="badge-legend-item"><span class="badge badge-unstoppable">🔥 Unstoppable</span> 10+ win streak</div>
+                    <div class="badge-legend-item"><span class="badge badge-streak">🔥 5 Streak</span> 5+ win streak</div>
+                    <div class="badge-legend-item"><span class="badge badge-streak">⚡ 3 Streak</span> 3+ current streak</div>
+                    <div class="badge-legend-item"><span class="badge badge-champ">🏆 x1</span> Tournament winner</div>
+                    <div class="badge-legend-item"><span class="badge badge-veteran">⚔️ Veteran</span> 20+ matches</div>
+                    <div class="badge-legend-item"><span class="badge badge-comeback">💪 Comeback</span> 2+ close wins</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="panel" style="grid-column: 1 / -1;">
+                <h2><span>🧬</span> Type Matchup Matrix</h2>
+                <div class="matrix-explanation">
+                    💡 <strong>How to read:</strong> Each cell shows the <strong>win rate of the row type vs the column type</strong>. 
+                    For example, if Attack vs Defense shows 62%, Attack-types win 62% of the time when facing Defense-types.
+                    Higher = better for the attacker (row), lower = better for the defender (column).
+                </div>
+                <table class="matrix-table">
+                    <thead>
+                        <tr>
+                            <th>Attacker / Defender</th>
+                            <th>Attack</th><th>Defense</th><th>Stamina</th><th>Balance</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><th>Attack</th><td style="color:var(--text-dim)">—</td><td class="matrix-cell matrix-low">23%</td><td class="matrix-cell matrix-mid">46%</td><td class="matrix-cell matrix-mid">52%</td></tr>
+<tr><th>Defense</th><td class="matrix-cell matrix-high">77%</td><td style="color:var(--text-dim)">—</td><td class="matrix-cell matrix-high">71%</td><td class="matrix-cell matrix-high">69%</td></tr>
+<tr><th>Stamina</th><td class="matrix-cell matrix-mid">54%</td><td class="matrix-cell matrix-low">29%</td><td style="color:var(--text-dim)">—</td><td class="matrix-cell matrix-mid">50%</td></tr>
+<tr><th>Balance</th><td class="matrix-cell matrix-mid">48%</td><td class="matrix-cell matrix-low">31%</td><td class="matrix-cell matrix-mid">50%</td><td style="color:var(--text-dim)">—</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="panel">
+                <h2><span>📈</span> ELO Distribution</h2>
+                <div class="chart-container">
+                    <canvas id="eloChart"></canvas>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2><span>🥧</span> Type Meta</h2>
+                <div class="chart-container">
+                    <canvas id="typeChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="panel">
+                <h2><span>⚔️</span> Recent Matches</h2>
+                <div class="match-item"><div class="match-vs"><span class="match-winner">Meteo L Drago</span><span style="color:var(--text-dim)">vs</span><span class="match-loser">Fusion Hades</span></div><span class="match-score">5-0</span><div class="match-meta"><div>April 2026 Season</div><div>Grand Finals • 2026-05-06</div></div></div>
+<div class="match-item"><div class="match-vs"><span class="match-winner">Fusion Hades</span><span style="color:var(--text-dim)">vs</span><span class="match-loser">Death Quetzalcoatl</span></div><span class="match-score">3-0</span><div class="match-meta"><div>April 2026 Season</div><div>Loser Finals • 2026-05-06</div></div></div>
+<div class="match-item"><div class="match-vs"><span class="match-winner">Meteo L Drago</span><span style="color:var(--text-dim)">vs</span><span class="match-loser">Death Quetzalcoatl</span></div><span class="match-score">5-0</span><div class="match-meta"><div>April 2026 Season</div><div>Upper Bracket Finals • 2026-05-06</div></div></div>
+<div class="match-item"><div class="match-vs"><span class="match-winner">Fusion Hades</span><span style="color:var(--text-dim)">vs</span><span class="match-loser">Earth Eagle</span></div><span class="match-score">1-0</span><div class="match-meta"><div>April 2026 Season</div><div>Losers • 2026-05-06</div></div></div>
+<div class="match-item"><div class="match-vs"><span class="match-winner">Fusion Hades</span><span style="color:var(--text-dim)">vs</span><span class="match-loser">Phantom Orion</span></div><span class="match-score">1-0</span><div class="match-meta"><div>April 2026 Season</div><div>Losers • 2026-05-06</div></div></div>
+<div class="match-item"><div class="match-vs"><span class="match-winner">Meteo L Drago</span><span style="color:var(--text-dim)">vs</span><span class="match-loser">Earth Eagle</span></div><span class="match-score">3-0</span><div class="match-meta"><div>April 2026 Season</div><div>Winners • 2026-05-06</div></div></div>
+<div class="match-item"><div class="match-vs"><span class="match-winner">Death Quetzalcoatl</span><span style="color:var(--text-dim)">vs</span><span class="match-loser">Fusion Hades</span></div><span class="match-score">4-0</span><div class="match-meta"><div>April 2026 Season</div><div>Winners • 2026-05-06</div></div></div>
+<div class="match-item"><div class="match-vs"><span class="match-winner">Phantom Orion</span><span style="color:var(--text-dim)">vs</span><span class="match-loser">Blitz Prototype</span></div><span class="match-score">1-0</span><div class="match-meta"><div>April 2026 Season</div><div>Losers • 2026-05-06</div></div></div>
+<div class="match-item"><div class="match-vs"><span class="match-winner">Twisted Zurafa</span><span style="color:var(--text-dim)">vs</span><span class="match-loser">Flame Dragonis</span></div><span class="match-score">2-0</span><div class="match-meta"><div>April 2026 Season</div><div>Losers • 2026-05-06</div></div></div>
+<div class="match-item"><div class="match-vs"><span class="match-winner">Blitz Prototype</span><span style="color:var(--text-dim)">vs</span><span class="match-loser">Lightning L Drago</span></div><span class="match-score">2-0</span><div class="match-meta"><div>April 2026 Season</div><div>Losers • 2026-05-06</div></div></div>
+<div class="match-item"><div class="match-vs"><span class="match-winner">Phantom Orion</span><span style="color:var(--text-dim)">vs</span><span class="match-loser">Duo Uranus</span></div><span class="match-score">1-0</span><div class="match-meta"><div>April 2026 Season</div><div>Losers • 2026-05-06</div></div></div>
+<div class="match-item"><div class="match-vs"><span class="match-winner">Flame Dragonis</span><span style="color:var(--text-dim)">vs</span><span class="match-loser">Screw Capricorn</span></div><span class="match-score">1-0</span><div class="match-meta"><div>April 2026 Season</div><div>Losers • 2026-05-06</div></div></div>
+<div class="match-item"><div class="match-vs"><span class="match-winner">Twisted Zurafa</span><span style="color:var(--text-dim)">vs</span><span class="match-loser">Scythe Unicorno</span></div><span class="match-score">1-0</span><div class="match-meta"><div>April 2026 Season</div><div>Losers • 2026-05-06</div></div></div>
+<div class="match-item"><div class="match-vs"><span class="match-winner">Earth Eagle</span><span style="color:var(--text-dim)">vs</span><span class="match-loser">Blitz Prototype</span></div><span class="match-score">3-0</span><div class="match-meta"><div>April 2026 Season</div><div>Winners • 2026-05-06</div></div></div>
+<div class="match-item"><div class="match-vs"><span class="match-winner">Meteo L Drago</span><span style="color:var(--text-dim)">vs</span><span class="match-loser">Phantom Orion</span></div><span class="match-score">3-2</span><div class="match-meta"><div>April 2026 Season</div><div>Winners • 2026-05-06</div></div></div>
+            </div>
+
+            <div class="panel">
+                <h2><span>🏁</span> Tournament History</h2>
+                <div class="tourney-list">
+                    <div class="tourney-item"><div class="tourney-info"><div class="tourney-name">April 2026 Season</div><div class="tourney-date">2026-05-06</div></div><div class="tourney-winner"><div><span class="trophy">🥇</span> Meteo L Drago</div><div style="color:var(--text-dim);font-size:0.85rem"><span class="trophy">🥈</span> Fusion Hades</div></div></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="panel" style="grid-column: 1 / -1;">
+                <h2><span>🤝</span> Notable Head-to-Heads</h2>
+                <div class="h2h-grid">
+                    <div class="h2h-card"><h4>Fusion Hades vs Death Quetzalcoatl</h4><div class="h2h-record">1 - 1</div><div class="h2h-detail">2 matches played</div></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid">
+            <div class="panel" style="grid-column: 1 / -1;">
+                <h2><span>🤯</span> Biggest Upsets</h2>
+                <div class="upset-item"><div class="upset-gap">+50</div><div class="upset-details"><span class="upset-winner">Fusion Hades</span> <span style="color:var(--text-dim)">def.</span> <span class="upset-loser">Phantom Orion</span><span style="color:var(--accent);font-weight:bold"> 1-0</span></div></div><div class="upset-item"><div class="upset-gap">+49</div><div class="upset-details"><span class="upset-winner">Phantom Orion</span> <span style="color:var(--text-dim)">def.</span> <span class="upset-loser">Duo Uranus</span><span style="color:var(--accent);font-weight:bold"> 1-0</span></div></div><div class="upset-item"><div class="upset-gap">+37</div><div class="upset-details"><span class="upset-winner">Blitz Prototype</span> <span style="color:var(--text-dim)">def.</span> <span class="upset-loser">Lightning L Drago</span><span style="color:var(--accent);font-weight:bold"> 2-0</span></div></div><div class="upset-item"><div class="upset-gap">+27</div><div class="upset-details"><span class="upset-winner">Sol Blaze</span> <span style="color:var(--text-dim)">def.</span> <span class="upset-loser">War Ares</span><span style="color:var(--accent);font-weight:bold"> 2-0</span></div></div><div class="upset-item"><div class="upset-gap">+20</div><div class="upset-details"><span class="upset-winner">Cyclone Eagle</span> <span style="color:var(--text-dim)">def.</span> <span class="upset-loser">Diablo Cygnus</span><span style="color:var(--accent);font-weight:bold"> 3-0</span></div></div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Generated on 2026-05-06 22:43 • Beyblade Tournament Tracker v2.0 🌀</p>
+        </footer>
+    </div>
+
+    <div class="modal-overlay" id="profileModal" onclick="closeModal(event)">
+        <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <button class="modal-close" onclick="closeModal()">✕</button>
+                <div id="modalContent"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function toggleTheme() {
+            const html = document.documentElement;
+            const btn = document.querySelector('.theme-toggle');
+            if (html.getAttribute('data-theme') === 'dark') {
+                html.setAttribute('data-theme', 'light');
+                btn.textContent = '☀️';
+            } else {
+                html.setAttribute('data-theme', 'dark');
+                btn.textContent = '🌙';
+            }
+        }
+
+        function showProfile(beyId) {
+            const data = PROFILE_DATA[beyId];
+            if (!data) return;
+
+            const modal = document.getElementById('profileModal');
+            const content = document.getElementById('modalContent');
+
+            let recentHtml = '';
+            data.recent.forEach(r => {
+                const cls = r.result === 'W' ? 'recent-w' : 'recent-l';
+                recentHtml += '<div class="recent-item"><span class="' + cls + '">' + r.result + '</span><span>' + r.opp + '</span><span>' + r.score + '</span><span style="color:var(--text-dim);font-size:0.8rem">' + r.tourney + '</span></div>';
+            });
+
+            let h2hOptions = '<option value="">Select a Beyblade...</option>';
+            for (let id in PROFILE_DATA) {
+                if (parseInt(id) !== beyId) {
+                    h2hOptions += '<option value="' + id + '">' + PROFILE_DATA[id].name + '</option>';
+                }
+            }
+
+            content.innerHTML = '<h2 style="font-size:1.8rem;margin-bottom:5px">' + data.name + '</h2><span class="bey-type type-' + data.type + '">' + data.type + '</span><div class="modal-stats"><div class="modal-stat"><div class="num">' + data.elo + '</div><div class="lbl">ELO</div></div><div class="modal-stat"><div class="num">' + data.peak + '</div><div class="lbl">Peak</div></div><div class="modal-stat"><div class="num">' + data.record + '</div><div class="lbl">Record</div></div><div class="modal-stat"><div class="num">' + data.wr + '</div><div class="lbl">Win Rate</div></div><div class="modal-stat"><div class="num">' + data.streak + '</div><div class="lbl">Best Streak</div></div><div class="modal-stat"><div class="num">' + data.titles + '</div><div class="lbl">Titles</div></div></div><h3 style="margin:20px 0 10px;color:var(--accent)">📈 ELO History</h3><div class="modal-chart"><canvas id="modalChart"></canvas></div><h3 style="margin:20px 0 10px;color:var(--accent)">📋 Recent Matches</h3><div class="recent-list">' + recentHtml + '</div><div class="h2h-compare"><h3 style="color:var(--accent);margin-bottom:10px">⚔️ Head-to-Head Compare</h3><select id="h2hSelect">' + h2hOptions + '</select><button onclick="compareH2H(' + beyId + ')">Compare</button><div id="h2hResult"></div></div>';
+
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+
+            setTimeout(() => {
+                const ctx = document.getElementById('modalChart').getContext('2d');
+                new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.elo_labels,
+                        datasets: [{
+                            label: 'ELO',
+                            data: data.elo_data,
+                            borderColor: 'var(--accent)',
+                            backgroundColor: 'rgba(0, 212, 255, 0.1)',
+                            fill: true,
+                            tension: 0.4,
+                            pointRadius: 3
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: {
+                            y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'var(--text-dim)' } },
+                            x: { grid: { display: false }, ticks: { color: 'var(--text-dim)', maxTicksLimit: 6 } }
+                        }
+                    }
+                });
+            }, 100);
+        }
+
+        function closeModal(e) {
+            if (e && e.target !== e.currentTarget) return;
+            document.getElementById('profileModal').classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        const eloCtx = document.getElementById('eloChart').getContext('2d');
+        new Chart(eloCtx, {
+            type: 'bar',
+            data: {
+                labels: ["<1100", "1100-1199", "1200-1299", "1300-1399", "1400+"],
+                datasets: [{
+                    label: 'Beyblades',
+                    data: [0, 27, 21, 2, 0],
+                    backgroundColor: 'rgba(0, 212, 255, 0.6)',
+                    borderColor: 'rgba(0, 212, 255, 1)',
+                    borderWidth: 1,
+                    borderRadius: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: 'var(--text-dim)' } },
+                    x: { grid: { display: false }, ticks: { color: 'var(--text-dim)' } }
+                }
+            }
+        });
+
+        const typeCtx = document.getElementById('typeChart').getContext('2d');
+        new Chart(typeCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ["Defense", "Stamina", "Balance", "Attack"],
+                datasets: [{
+                    data: [10, 7, 16, 20],
+                    backgroundColor: [
+                        'rgba(255, 107, 107, 0.8)',
+                        'rgba(74, 222, 128, 0.8)',
+                        'rgba(96, 165, 250, 0.8)',
+                        'rgba(251, 191, 36, 0.8)'
+                    ],
+                    borderColor: 'var(--bg)',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'right', labels: { color: 'var(--text)' } }
+                }
+            }
+        });
+
+        function compareH2H(beyId) {
+            const select = document.getElementById('h2hSelect');
+            const oppId = parseInt(select.value);
+            const resultDiv = document.getElementById('h2hResult');
+
+            if (!oppId || !H2H_DATA[beyId] || !H2H_DATA[beyId][oppId]) {
+                resultDiv.innerHTML = '<p style="color:var(--text-dim);margin-top:10px">No matches found between these Beyblades.</p>';
+                return;
+            }
+
+            const h2h = H2H_DATA[beyId][oppId];
+            const myName = PROFILE_DATA[beyId].name;
+            const oppName = PROFILE_DATA[oppId].name;
+
+            let matchesHtml = '';
+            h2h.matches.forEach(m => {
+                const wCls = m.winner_id === beyId ? 'winner' : 'loser';
+                const lCls = m.winner_id === beyId ? 'loser' : 'winner';
+                const wName = m.winner_id === beyId ? myName : oppName;
+                const lName = m.winner_id === beyId ? oppName : myName;
+                matchesHtml += '<div class="h2h-match"><span class="' + wCls + '">' + wName + '</span><span class="score">' + m.winner_score + '-' + m.loser_score + '</span><span class="' + lCls + '">' + lName + '</span></div>';
+            });
+
+            resultDiv.innerHTML = '<div class="h2h-result"><h4>' + myName + ' vs ' + oppName + '</h4><div class="record"><span>' + h2h.my_wins + '</span> - <span class="lose">' + h2h.opp_wins + '</span></div><div style="text-align:center;color:var(--text-dim);font-size:0.85rem">' + h2h.total + ' matches played</div><div class="h2h-matches">' + matchesHtml + '</div></div>';
+        }
+
+        const PROFILE_DATA = {"24": {"name": "Meteo L Drago", "type": "Defense", "elo": "1312", "peak": "1312", "record": "7-0", "wr": "100.0%", "streak": 7, "titles": 1, "elo_labels": ["2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06"], "elo_data": [1220.0, 1228.85, 1232.49, 1236.06, 1256.95, 1283.47, 1312.48], "recent": [{"result": "W", "opp": "Fusion Hades", "score": "5-0", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Death Quetzalcoatl", "score": "5-0", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Earth Eagle", "score": "3-0", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Phantom Orion", "score": "3-2", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Vulcan Horuseus", "score": "3-2", "tourney": "April 2026 Season"}]}, "38": {"name": "Twisted Zurafa", "type": "Balance", "elo": "1302", "peak": "1302", "record": "6-1", "wr": "85.7%", "streak": 4, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06"], "elo_data": [1220.0, 1239.42, 1232.15, 1249.83, 1268.31, 1284.67, 1302.32], "recent": [{"result": "W", "opp": "Flame Dragonis", "score": "2-0", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Scythe Unicorno", "score": "1-0", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Scythe Kronos", "score": "1-0", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Wing Pegasus", "score": "1-0", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Blitz Prototype", "score": "2-4", "tourney": "April 2026 Season"}]}, "30": {"name": "Flame Dragonis", "type": "Balance", "elo": "1260", "peak": "1278", "record": "5-2", "wr": "71.4%", "streak": 3, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06"], "elo_data": [1210.0, 1229.42, 1224.91, 1243.4, 1261.08, 1277.88, 1260.23], "recent": [{"result": "L", "opp": "Twisted Zurafa", "score": "0-2", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Screw Capricorn", "score": "1-0", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Vulcan Horuseus", "score": "2-0", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Diablo Cygnus", "score": "1-0", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Phantom Orion", "score": "2-3", "tourney": "April 2026 Season"}]}, "14": {"name": "Duo Uranus", "type": "Defense", "elo": "1250", "peak": "1270", "record": "4-2", "wr": "66.7%", "streak": 2, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06"], "elo_data": [1220.0, 1240.0, 1235.93, 1252.95, 1270.23, 1249.72], "recent": [{"result": "L", "opp": "Phantom Orion", "score": "0-1", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Sol Blaze", "score": "1-0", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Bakushin Susanoo", "score": "1-0", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Screw Capricorn", "score": "2-3", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Ice Titan", "score": "3-0", "tourney": "April 2026 Season"}]}, "20": {"name": "Fusion Hades", "type": "Defense", "elo": "1243", "peak": "1272", "record": "7-2", "wr": "77.8%", "streak": 4, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06"], "elo_data": [1210.0, 1220.0, 1224.22, 1229.3, 1210.19, 1230.74, 1248.74, 1271.95, 1242.94], "recent": [{"result": "L", "opp": "Meteo L Drago", "score": "0-5", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Death Quetzalcoatl", "score": "3-0", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Earth Eagle", "score": "1-0", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Phantom Orion", "score": "1-0", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Death Quetzalcoatl", "score": "0-4", "tourney": "April 2026 Season"}]}, "28": {"name": "Scythe Kronos", "type": "Stamina", "elo": "1241", "peak": "1259", "record": "4-2", "wr": "66.7%", "streak": 4, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06"], "elo_data": [1190.0, 1207.48, 1224.07, 1241.7, 1259.16, 1240.68], "recent": [{"result": "L", "opp": "Twisted Zurafa", "score": "0-1", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Flash Sagittarius", "score": "1-0", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Kreis Cygnus", "score": "1-0", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Beat Lynx", "score": "1-0", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Nemesis", "score": "1-0", "tourney": "April 2026 Season"}]}, "50": {"name": "Phantom Orion", "type": "Stamina", "elo": "1239", "peak": "1260", "record": "4-2", "wr": "66.7%", "streak": 2, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06"], "elo_data": [1220.58, 1225.09, 1221.52, 1242.03, 1259.71, 1239.16], "recent": [{"result": "L", "opp": "Fusion Hades", "score": "0-1", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Blitz Prototype", "score": "1-0", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Duo Uranus", "score": "1-0", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Meteo L Drago", "score": "2-3", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Flame Dragonis", "score": "3-2", "tourney": "April 2026 Season"}]}, "49": {"name": "Lightning L Drago", "type": "Attack", "elo": "1233", "peak": "1253", "record": "4-2", "wr": "66.7%", "streak": 4, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06"], "elo_data": [1180.58, 1199.48, 1217.43, 1234.59, 1253.33, 1233.4], "recent": [{"result": "L", "opp": "Blitz Prototype", "score": "0-2", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Gravity Perseus", "score": "2-0", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Cyclone Eagle", "score": "1-0", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Hasbros Orion", "score": "2-0", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Rock Leone", "score": "1-0", "tourney": "April 2026 Season"}]}, "18": {"name": "Gravity Perseus", "type": "Attack", "elo": "1230", "peak": "1249", "record": "3-2", "wr": "60.0%", "streak": 3, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06"], "elo_data": [1196.0, 1214.59, 1232.35, 1248.88, 1230.14], "recent": [{"result": "L", "opp": "Lightning L Drago", "score": "0-2", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Storm Pegasus", "score": "2-0", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Burn Beezlebub", "score": "2-0", "tourney": "April 2026 Season"}, {"result": "W", "opp": "L Drago Rush", "score": "2-0", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Sol Blaze", "score": "2-3", "tourney": "April 2026 Season"}]}, "5": {"name": "War Ares", "type": "Attack", "elo": "1228", "peak": "1247", "record": "3-2", "wr": "60.0%", "streak": 3, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06"], "elo_data": [1196.0, 1213.86, 1230.12, 1246.95, 1227.53], "recent": [{"result": "L", "opp": "Sol Blaze", "score": "0-2", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Diablo Scorpio", "score": "2-0", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Poison Herogium", "score": "2-0", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Prototype", "score": "2-0", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Storm Pegasus", "score": "2-3", "tourney": "April 2026 Season"}]}, "17": {"name": "Sol Blaze", "type": "Defense", "elo": "1222", "peak": "1239", "record": "3-2", "wr": "60.0%", "streak": 2, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06"], "elo_data": [1204.0, 1223.77, 1219.55, 1238.97, 1221.69], "recent": [{"result": "L", "opp": "Duo Uranus", "score": "0-1", "tourney": "April 2026 Season"}, {"result": "W", "opp": "War Ares", "score": "2-0", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Fusion Hades", "score": "2-3", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Beat Lynx", "score": "4-0", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Gravity Perseus", "score": "3-2", "tourney": "April 2026 Season"}]}, "11": {"name": "Screw Capricorn", "type": "Attack", "elo": "1221", "peak": "1243", "record": "3-2", "wr": "60.0%", "streak": 3, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06"], "elo_data": [1220.0, 1238.85, 1242.92, 1237.84, 1221.04], "recent": [{"result": "L", "opp": "Flame Dragonis", "score": "0-1", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Fusion Hades", "score": "2-3", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Duo Uranus", "score": "3-2", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Rock Diablo", "score": "3-0", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Hasbros Orion", "score": "4-0", "tourney": "April 2026 Season"}]}, "44": {"name": "Scythe Unicorno", "type": "Balance", "elo": "1220", "peak": "1241", "record": "2-2", "wr": "50.0%", "streak": 2, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06"], "elo_data": [1220.58, 1240.61, 1236.62, 1220.26], "recent": [{"result": "L", "opp": "Twisted Zurafa", "score": "0-1", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Death Quetzalcoatl", "score": "2-3", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Cyclone Eagle", "score": "3-0", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Cosmic Pegasus", "score": "4-0", "tourney": "April 2026 Season"}]}, "27": {"name": "Vulcan Horuseus", "type": "Attack", "elo": "1220", "peak": "1237", "record": "3-2", "wr": "60.0%", "streak": 2, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06"], "elo_data": [1210.0, 1222.58, 1218.94, 1237.27, 1219.59], "recent": [{"result": "L", "opp": "Flame Dragonis", "score": "0-2", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Fang Leone", "score": "2-0", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Meteo L Drago", "score": "2-3", "tourney": "April 2026 Season"}, {"result": "W", "opp": "L Drago Rush", "score": "4-1", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Scythe Kronos", "score": "3-1", "tourney": "April 2026 Season"}]}, "33": {"name": "Blitz Prototype", "type": "Attack", "elo": "1218", "peak": "1236", "record": "4-2", "wr": "66.7%", "streak": 3, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06"], "elo_data": [1220.0, 1228.85, 1236.12, 1215.84, 1235.77, 1218.09], "recent": [{"result": "L", "opp": "Phantom Orion", "score": "0-1", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Lightning L Drago", "score": "2-0", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Earth Eagle", "score": "0-3", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Twisted Zurafa", "score": "4-2", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Jade Jupiter", "score": "3-1", "tourney": "April 2026 Season"}]}, "10": {"name": "Diablo Cygnus", "type": "Attack", "elo": "1216", "peak": "1234", "record": "3-2", "wr": "60.0%", "streak": 2, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06"], "elo_data": [1220.0, 1198.85, 1215.87, 1234.32, 1215.83], "recent": [{"result": "L", "opp": "Flame Dragonis", "score": "0-1", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Stickerless Orion", "score": "2-0", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Variares", "score": "2-0", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Cyclone Eagle", "score": "0-3", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Bakushin Susanoo", "score": "3-0", "tourney": "April 2026 Season"}]}, "43": {"name": "Death Quetzalcoatl", "type": "Defense", "elo": "1214", "peak": "1264", "record": "4-2", "wr": "66.7%", "streak": 4, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06"], "elo_data": [1220.58, 1240.79, 1244.78, 1263.89, 1237.37, 1214.16], "recent": [{"result": "L", "opp": "Fusion Hades", "score": "0-3", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Meteo L Drago", "score": "0-5", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Fusion Hades", "score": "4-0", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Scythe Unicorno", "score": "3-2", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Storm Pegasus", "score": "3-0", "tourney": "April 2026 Season"}]}, "41": {"name": "Flash Sagittarius", "type": "Attack", "elo": "1214", "peak": "1239", "record": "2-2", "wr": "50.0%", "streak": 2, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06"], "elo_data": [1220.0, 1238.85, 1231.32, 1213.86], "recent": [{"result": "L", "opp": "Scythe Kronos", "score": "0-1", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Earth Eagle", "score": "2-4", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Hells Kerbecs", "score": "4-0", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Attack Lynx", "score": "4-0", "tourney": "April 2026 Season"}]}, "39": {"name": "Earth Eagle", "type": "Balance", "elo": "1213", "peak": "1252", "record": "4-2", "wr": "66.7%", "streak": 4, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06"], "elo_data": [1204.0, 1223.77, 1231.3, 1251.58, 1230.69, 1212.69], "recent": [{"result": "L", "opp": "Fusion Hades", "score": "0-1", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Meteo L Drago", "score": "0-3", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Blitz Prototype", "score": "3-0", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Flash Sagittarius", "score": "4-2", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Poison Herogium", "score": "3-0", "tourney": "April 2026 Season"}]}, "29": {"name": "Wing Pegasus", "type": "Defense", "elo": "1208", "peak": "1226", "record": "2-2", "wr": "50.0%", "streak": 2, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06"], "elo_data": [1190.0, 1208.52, 1226.06, 1208.38], "recent": [{"result": "L", "opp": "Twisted Zurafa", "score": "0-1", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Rock Diablo", "score": "1-0", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Ice Titan", "score": "2-0", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Flame Dragonis", "score": "1-3", "tourney": "April 2026 Season"}]}, "2": {"name": "Fang Leone", "type": "Balance", "elo": "1207", "peak": "1225", "record": "3-2", "wr": "60.0%", "streak": 2, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06"], "elo_data": [1210.0, 1189.42, 1206.93, 1225.27, 1206.94], "recent": [{"result": "L", "opp": "Vulcan Horuseus", "score": "0-2", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Twisted Tempo", "score": "2-0", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Attack Lynx", "score": "1-0", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Death Quetzalcoatl", "score": "0-3", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Diablo Scorpio", "score": "3-1", "tourney": "April 2026 Season"}]}, "36": {"name": "Stickerless Orion", "type": "Balance", "elo": "1206", "peak": "1225", "record": "2-2", "wr": "50.0%", "streak": 2, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06"], "elo_data": [1190.0, 1207.48, 1224.55, 1206.1], "recent": [{"result": "L", "opp": "Diablo Cygnus", "score": "0-2", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Cosmic Pegasus", "score": "1-0", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Flame Byxis", "score": "1-0", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Mercury Anubis", "score": "1-3", "tourney": "April 2026 Season"}]}, "9": {"name": "Bakushin Susanoo", "type": "Defense", "elo": "1200", "peak": "1217", "record": "2-2", "wr": "50.0%", "streak": 2, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06"], "elo_data": [1180.0, 1198.58, 1217.07, 1200.05], "recent": [{"result": "L", "opp": "Duo Uranus", "score": "0-1", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Galaxy Pegasus", "score": "1-0", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Jade Jupiter", "score": "2-0", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Diablo Cygnus", "score": "0-3", "tourney": "April 2026 Season"}]}, "21": {"name": "Kreis Cygnus", "type": "Defense", "elo": "1199", "peak": "1217", "record": "2-2", "wr": "50.0%", "streak": 1, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06"], "elo_data": [1210.0, 1200.0, 1216.96, 1199.33], "recent": [{"result": "L", "opp": "Scythe Kronos", "score": "0-1", "tourney": "April 2026 Season"}, {"result": "W", "opp": "L Drago Assault", "score": "2-0", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Fusion Hades", "score": "1-3", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Attack Kerbecs", "score": "3-1", "tourney": "April 2026 Season"}]}, "40": {"name": "Twisted Tempo", "type": "Defense", "elo": "1195", "peak": "1214", "record": "1-2", "wr": "33.3%", "streak": 1, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06", "2026-05-06"], "elo_data": [1196.0, 1213.51, 1195.17], "recent": [{"result": "L", "opp": "Fang Leone", "score": "0-2", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Evil Befall", "score": "1-0", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Earth Eagle", "score": "2-3", "tourney": "April 2026 Season"}]}, "48": {"name": "Burn Beezlebub", "type": "Stamina", "elo": "1192", "peak": "1210", "record": "1-2", "wr": "33.3%", "streak": 1, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06", "2026-05-06"], "elo_data": [1191.15, 1210.02, 1192.26], "recent": [{"result": "L", "opp": "Gravity Perseus", "score": "0-2", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Attack Kerbecs", "score": "2-0", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Meteo L Drago", "score": "1-3", "tourney": "April 2026 Season"}]}, "1": {"name": "Diablo Scorpio", "type": "Balance", "elo": "1191", "peak": "1208", "record": "1-2", "wr": "33.3%", "streak": 1, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06", "2026-05-06"], "elo_data": [1190.0, 1207.54, 1190.71], "recent": [{"result": "L", "opp": "War Ares", "score": "0-2", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Hells Kerbecs", "score": "1-0", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Fang Leone", "score": "1-3", "tourney": "April 2026 Season"}]}, "8": {"name": "Galaxy Pegasus", "type": "Attack", "elo": "1190", "peak": "1208", "record": "1-2", "wr": "33.3%", "streak": 1, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06", "2026-05-06"], "elo_data": [1190.0, 1208.03, 1189.54], "recent": [{"result": "L", "opp": "Bakushin Susanoo", "score": "0-1", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Mercury Anubis", "score": "2-0", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Cosmic Pegasus", "score": "1-3", "tourney": "April 2026 Season"}]}, "22": {"name": "Attack Kerbecs", "type": "Attack", "elo": "1189", "peak": "1208", "record": "1-2", "wr": "33.3%", "streak": 1, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06", "2026-05-06"], "elo_data": [1190.0, 1208.0, 1189.13], "recent": [{"result": "L", "opp": "Burn Beezlebub", "score": "0-2", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Diablo Nemesis", "score": "1-0", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Kreis Cygnus", "score": "1-3", "tourney": "April 2026 Season"}]}, "25": {"name": "L Drago Rush", "type": "Attack", "elo": "1189", "peak": "1220", "record": "1-2", "wr": "33.3%", "streak": 1, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06", "2026-05-06"], "elo_data": [1220.0, 1207.42, 1188.83], "recent": [{"result": "L", "opp": "Gravity Perseus", "score": "0-2", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Vulcan Horuseus", "score": "1-4", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Nemesis", "score": "3-0", "tourney": "April 2026 Season"}]}, "6": {"name": "Storm Pegasus", "type": "Attack", "elo": "1187", "peak": "1224", "record": "2-2", "wr": "50.0%", "streak": 2, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06", "2026-05-06", "2026-05-06"], "elo_data": [1204.0, 1224.15, 1203.94, 1187.41], "recent": [{"result": "L", "opp": "Gravity Perseus", "score": "0-2", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Death Quetzalcoatl", "score": "0-3", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Evil Befall", "score": "3-0", "tourney": "April 2026 Season"}, {"result": "W", "opp": "War Ares", "score": "3-2", "tourney": "April 2026 Season"}]}, "45": {"name": "Cyclone Eagle", "type": "Stamina", "elo": "1184", "peak": "1221", "record": "1-2", "wr": "33.3%", "streak": 1, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06", "2026-05-06"], "elo_data": [1221.15, 1201.12, 1183.96], "recent": [{"result": "L", "opp": "Lightning L Drago", "score": "0-1", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Scythe Unicorno", "score": "0-3", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Diablo Cygnus", "score": "3-0", "tourney": "April 2026 Season"}]}, "46": {"name": "Rock Diablo", "type": "Balance", "elo": "1182", "peak": "1200", "record": "1-2", "wr": "33.3%", "streak": 1, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06", "2026-05-06"], "elo_data": [1181.15, 1199.61, 1182.07], "recent": [{"result": "L", "opp": "Wing Pegasus", "score": "0-1", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Ray Striker", "score": "1-0", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Screw Capricorn", "score": "0-3", "tourney": "April 2026 Season"}]}, "16": {"name": "Ice Titan", "type": "Stamina", "elo": "1181", "peak": "1220", "record": "1-2", "wr": "33.3%", "streak": 1, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06", "2026-05-06"], "elo_data": [1220.0, 1200.0, 1181.48], "recent": [{"result": "L", "opp": "Wing Pegasus", "score": "0-2", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Duo Uranus", "score": "0-3", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Blitz Unicorno", "score": "3-0", "tourney": "April 2026 Season"}]}, "12": {"name": "Hasbros Orion", "type": "Stamina", "elo": "1181", "peak": "1200", "record": "1-2", "wr": "33.3%", "streak": 1, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06", "2026-05-06"], "elo_data": [1180.0, 1198.49, 1180.54], "recent": [{"result": "L", "opp": "Lightning L Drago", "score": "0-2", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Omega Dragonis", "score": "1-0", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Screw Capricorn", "score": "0-4", "tourney": "April 2026 Season"}]}, "13": {"name": "Rock Leone", "type": "Defense", "elo": "1179", "peak": "1200", "record": "1-2", "wr": "33.3%", "streak": 1, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06", "2026-05-06"], "elo_data": [1180.0, 1198.0, 1179.1], "recent": [{"result": "L", "opp": "Lightning L Drago", "score": "0-1", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Blitz Unicorno", "score": "2-0", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Duo Uranus", "score": "0-3", "tourney": "April 2026 Season"}]}, "4": {"name": "Prototype", "type": "Attack", "elo": "1175", "peak": "1200", "record": "0-2", "wr": "\u2014", "streak": 0, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06"], "elo_data": [1193.33, 1175.47], "recent": [{"result": "L", "opp": "War Ares", "score": "0-2", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Evil Befall", "score": "2-4", "tourney": "April 2026 Season"}]}, "51": {"name": "Jade Jupiter", "type": "Balance", "elo": "1173", "peak": "1200", "record": "0-2", "wr": "\u2014", "streak": 0, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06"], "elo_data": [1191.15, 1172.57], "recent": [{"result": "L", "opp": "Bakushin Susanoo", "score": "0-2", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Blitz Prototype", "score": "1-3", "tourney": "April 2026 Season"}]}, "35": {"name": "Mercury Anubis", "type": "Attack", "elo": "1173", "peak": "1210", "record": "1-2", "wr": "33.3%", "streak": 1, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06", "2026-05-06"], "elo_data": [1210.0, 1190.58, 1172.55], "recent": [{"result": "L", "opp": "Galaxy Pegasus", "score": "0-2", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Twisted Zurafa", "score": "0-4", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Stickerless Orion", "score": "3-1", "tourney": "April 2026 Season"}]}, "7": {"name": "Cosmic Pegasus", "type": "Attack", "elo": "1172", "peak": "1210", "record": "1-2", "wr": "33.3%", "streak": 1, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06", "2026-05-06"], "elo_data": [1210.0, 1189.42, 1172.35], "recent": [{"result": "L", "opp": "Stickerless Orion", "score": "0-1", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Scythe Unicorno", "score": "0-4", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Galaxy Pegasus", "score": "3-1", "tourney": "April 2026 Season"}]}, "19": {"name": "Diablo Nemesis", "type": "Balance", "elo": "1172", "peak": "1200", "record": "0-2", "wr": "\u2014", "streak": 0, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06"], "elo_data": [1190.0, 1172.0], "recent": [{"result": "L", "opp": "Attack Kerbecs", "score": "0-1", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Fusion Hades", "score": "1-3", "tourney": "April 2026 Season"}]}, "31": {"name": "Ray Striker", "type": "Balance", "elo": "1172", "peak": "1200", "record": "0-2", "wr": "\u2014", "streak": 0, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06"], "elo_data": [1190.0, 1171.54], "recent": [{"result": "L", "opp": "Rock Diablo", "score": "0-1", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Omega Dragonis", "score": "1-3", "tourney": "April 2026 Season"}]}, "32": {"name": "Omega Dragonis", "type": "Attack", "elo": "1171", "peak": "1210", "record": "1-2", "wr": "33.3%", "streak": 1, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06", "2026-05-06"], "elo_data": [1210.0, 1189.42, 1170.93], "recent": [{"result": "L", "opp": "Hasbros Orion", "score": "0-1", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Phantom Orion", "score": "0-3", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Ray Striker", "score": "3-1", "tourney": "April 2026 Season"}]}, "3": {"name": "Evil Befall", "type": "Balance", "elo": "1169", "peak": "1207", "record": "1-2", "wr": "33.3%", "streak": 1, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06", "2026-05-06"], "elo_data": [1206.67, 1186.52, 1169.01], "recent": [{"result": "L", "opp": "Twisted Tempo", "score": "0-1", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Storm Pegasus", "score": "0-3", "tourney": "April 2026 Season"}, {"result": "W", "opp": "Prototype", "score": "4-2", "tourney": "April 2026 Season"}]}, "52": {"name": "Poison Herogium", "type": "Balance", "elo": "1164", "peak": "1200", "record": "0-2", "wr": "\u2014", "streak": 0, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06"], "elo_data": [1180.23, 1163.97], "recent": [{"result": "L", "opp": "War Ares", "score": "0-2", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Earth Eagle", "score": "0-3", "tourney": "April 2026 Season"}]}, "47": {"name": "Beat Lynx", "type": "Balance", "elo": "1164", "peak": "1200", "record": "0-2", "wr": "\u2014", "streak": 0, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06"], "elo_data": [1180.23, 1163.64], "recent": [{"result": "L", "opp": "Scythe Kronos", "score": "0-1", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Sol Blaze", "score": "0-4", "tourney": "April 2026 Season"}]}, "53": {"name": "Hells Kerbecs", "type": "Stamina", "elo": "1164", "peak": "1200", "record": "0-2", "wr": "\u2014", "streak": 0, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06"], "elo_data": [1181.15, 1163.61], "recent": [{"result": "L", "opp": "Diablo Scorpio", "score": "0-1", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Flash Sagittarius", "score": "0-4", "tourney": "April 2026 Season"}]}, "23": {"name": "L Drago Assault", "type": "Attack", "elo": "1163", "peak": "1200", "record": "0-2", "wr": "\u2014", "streak": 0, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06"], "elo_data": [1180.0, 1163.04], "recent": [{"result": "L", "opp": "Kreis Cygnus", "score": "0-2", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Meteo L Drago", "score": "0-3", "tourney": "April 2026 Season"}]}, "34": {"name": "Variares", "type": "Attack", "elo": "1163", "peak": "1200", "record": "0-2", "wr": "\u2014", "streak": 0, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06"], "elo_data": [1180.0, 1162.98], "recent": [{"result": "L", "opp": "Diablo Cygnus", "score": "0-2", "tourney": "April 2026 Season"}, {"result": "L", "opp": "Blitz Prototype", "score": "0-3", "tourney": "April 2026 Season"}]}, "26": {"name": "Nemesis", "type": "Balance", "elo": "1163", "peak": "1200", "record": "0-2", "wr": "\u2014", "streak": 0, "titles": 0, "elo_labels": ["2026-05-06", "2026-05-06"], "elo_data": [1180.0, 1162.52], "recent": [{"result": "L", "opp": "Scythe Kronos", "score": "0-1", "tourney": "April 2026 Season"}, {"result": "L", "opp": "L Drago Rush", "score": "0-3", "tourney": "April 2026 Season"}]}};
+        const H2H_DATA = {"24": {"20": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 24, "winner_score": 5, "loser_score": 0, "date": "2026-05-06", "bracket": "Grand Finals"}]}, "50": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 24, "winner_score": 3, "loser_score": 2, "date": "2026-05-06", "bracket": "Winners"}]}, "27": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 24, "winner_score": 3, "loser_score": 2, "date": "2026-05-06", "bracket": "Winners"}]}, "43": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 24, "winner_score": 5, "loser_score": 0, "date": "2026-05-06", "bracket": "Upper Bracket Finals"}]}, "39": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 24, "winner_score": 3, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}, "48": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 24, "winner_score": 3, "loser_score": 1, "date": "2026-05-06", "bracket": "Winners"}]}, "23": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 24, "winner_score": 3, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}}, "38": {"30": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 38, "winner_score": 2, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "28": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 38, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "44": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 38, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "33": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 33, "winner_score": 4, "loser_score": 2, "date": "2026-05-06", "bracket": "Winners"}]}, "29": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 38, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "35": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 38, "winner_score": 4, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}}, "30": {"38": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 38, "winner_score": 2, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "50": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 50, "winner_score": 3, "loser_score": 2, "date": "2026-05-06", "bracket": "Winners"}]}, "49": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 30, "winner_score": 3, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}, "11": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 30, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "27": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 30, "winner_score": 2, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "10": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 30, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "29": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 30, "winner_score": 3, "loser_score": 1, "date": "2026-05-06", "bracket": "Winners"}]}}, "14": {"50": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 50, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "17": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 14, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "11": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 11, "winner_score": 3, "loser_score": 2, "date": "2026-05-06", "bracket": "Winners"}]}, "9": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 14, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "16": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 14, "winner_score": 3, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}, "13": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 14, "winner_score": 3, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}}, "20": {"24": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 24, "winner_score": 5, "loser_score": 0, "date": "2026-05-06", "bracket": "Grand Finals"}]}, "50": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 20, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "17": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 20, "winner_score": 3, "loser_score": 2, "date": "2026-05-06", "bracket": "Winners"}]}, "11": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 20, "winner_score": 3, "loser_score": 2, "date": "2026-05-06", "bracket": "Winners"}]}, "43": {"my_wins": 1, "opp_wins": 1, "total": 2, "matches": [{"winner_id": 43, "winner_score": 4, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}, {"winner_id": 20, "winner_score": 3, "loser_score": 0, "date": "2026-05-06", "bracket": "Loser Finals"}]}, "39": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 20, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "21": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 20, "winner_score": 3, "loser_score": 1, "date": "2026-05-06", "bracket": "Winners"}]}, "19": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 20, "winner_score": 3, "loser_score": 1, "date": "2026-05-06", "bracket": "Winners"}]}}, "28": {"38": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 38, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "27": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 27, "winner_score": 3, "loser_score": 1, "date": "2026-05-06", "bracket": "Winners"}]}, "41": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 28, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "21": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 28, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "47": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 28, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "26": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 28, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}}, "50": {"24": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 24, "winner_score": 3, "loser_score": 2, "date": "2026-05-06", "bracket": "Winners"}]}, "30": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 50, "winner_score": 3, "loser_score": 2, "date": "2026-05-06", "bracket": "Winners"}]}, "14": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 50, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "20": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 20, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "33": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 50, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "32": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 50, "winner_score": 3, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}}, "49": {"30": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 30, "winner_score": 3, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}, "18": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 49, "winner_score": 2, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "33": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 33, "winner_score": 2, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "45": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 49, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "12": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 49, "winner_score": 2, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "13": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 49, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}}, "18": {"49": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 49, "winner_score": 2, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "17": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 17, "winner_score": 3, "loser_score": 2, "date": "2026-05-06", "bracket": "Winners"}]}, "48": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 18, "winner_score": 2, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "25": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 18, "winner_score": 2, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "6": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 18, "winner_score": 2, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}}, "5": {"17": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 17, "winner_score": 2, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "1": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 5, "winner_score": 2, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "6": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 6, "winner_score": 3, "loser_score": 2, "date": "2026-05-06", "bracket": "Winners"}]}, "4": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 5, "winner_score": 2, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "52": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 5, "winner_score": 2, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}}, "17": {"14": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 14, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "20": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 20, "winner_score": 3, "loser_score": 2, "date": "2026-05-06", "bracket": "Winners"}]}, "18": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 17, "winner_score": 3, "loser_score": 2, "date": "2026-05-06", "bracket": "Winners"}]}, "5": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 17, "winner_score": 2, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "47": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 17, "winner_score": 4, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}}, "11": {"30": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 30, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "14": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 11, "winner_score": 3, "loser_score": 2, "date": "2026-05-06", "bracket": "Winners"}]}, "20": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 20, "winner_score": 3, "loser_score": 2, "date": "2026-05-06", "bracket": "Winners"}]}, "46": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 11, "winner_score": 3, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}, "12": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 11, "winner_score": 4, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}}, "44": {"38": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 38, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "43": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 43, "winner_score": 3, "loser_score": 2, "date": "2026-05-06", "bracket": "Winners"}]}, "45": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 44, "winner_score": 3, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}, "7": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 44, "winner_score": 4, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}}, "27": {"24": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 24, "winner_score": 3, "loser_score": 2, "date": "2026-05-06", "bracket": "Winners"}]}, "30": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 30, "winner_score": 2, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "28": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 27, "winner_score": 3, "loser_score": 1, "date": "2026-05-06", "bracket": "Winners"}]}, "2": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 27, "winner_score": 2, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "25": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 27, "winner_score": 4, "loser_score": 1, "date": "2026-05-06", "bracket": "Winners"}]}}, "33": {"38": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 33, "winner_score": 4, "loser_score": 2, "date": "2026-05-06", "bracket": "Winners"}]}, "50": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 50, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "49": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 33, "winner_score": 2, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "39": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 39, "winner_score": 3, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}, "51": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 33, "winner_score": 3, "loser_score": 1, "date": "2026-05-06", "bracket": "Winners"}]}, "34": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 33, "winner_score": 3, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}}, "10": {"30": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 30, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "36": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 10, "winner_score": 2, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "9": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 10, "winner_score": 3, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}, "45": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 45, "winner_score": 3, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}, "34": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 10, "winner_score": 2, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}}, "43": {"24": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 24, "winner_score": 5, "loser_score": 0, "date": "2026-05-06", "bracket": "Upper Bracket Finals"}]}, "20": {"my_wins": 1, "opp_wins": 1, "total": 2, "matches": [{"winner_id": 43, "winner_score": 4, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}, {"winner_id": 20, "winner_score": 3, "loser_score": 0, "date": "2026-05-06", "bracket": "Loser Finals"}]}, "44": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 43, "winner_score": 3, "loser_score": 2, "date": "2026-05-06", "bracket": "Winners"}]}, "2": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 43, "winner_score": 3, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}, "6": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 43, "winner_score": 3, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}}, "41": {"28": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 28, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "39": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 39, "winner_score": 4, "loser_score": 2, "date": "2026-05-06", "bracket": "Winners"}]}, "53": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 41, "winner_score": 4, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}}, "39": {"24": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 24, "winner_score": 3, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}, "20": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 20, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "33": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 39, "winner_score": 3, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}, "41": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 39, "winner_score": 4, "loser_score": 2, "date": "2026-05-06", "bracket": "Winners"}]}, "40": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 39, "winner_score": 3, "loser_score": 2, "date": "2026-05-06", "bracket": "Winners"}]}, "52": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 39, "winner_score": 3, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}}, "29": {"38": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 38, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "30": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 30, "winner_score": 3, "loser_score": 1, "date": "2026-05-06", "bracket": "Winners"}]}, "46": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 29, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "16": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 29, "winner_score": 2, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}}, "2": {"27": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 27, "winner_score": 2, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "43": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 43, "winner_score": 3, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}, "40": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 2, "winner_score": 2, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "1": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 2, "winner_score": 3, "loser_score": 1, "date": "2026-05-06", "bracket": "Winners"}]}}, "36": {"10": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 10, "winner_score": 2, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "35": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 35, "winner_score": 3, "loser_score": 1, "date": "2026-05-06", "bracket": "Winners"}]}, "7": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 36, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}}, "9": {"14": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 14, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "10": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 10, "winner_score": 3, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}, "8": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 9, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "51": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 9, "winner_score": 2, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}}, "21": {"20": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 20, "winner_score": 3, "loser_score": 1, "date": "2026-05-06", "bracket": "Winners"}]}, "28": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 28, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "22": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 21, "winner_score": 3, "loser_score": 1, "date": "2026-05-06", "bracket": "Winners"}]}, "23": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 21, "winner_score": 2, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}}, "40": {"39": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 39, "winner_score": 3, "loser_score": 2, "date": "2026-05-06", "bracket": "Winners"}]}, "2": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 2, "winner_score": 2, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "3": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 40, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}}, "48": {"24": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 24, "winner_score": 3, "loser_score": 1, "date": "2026-05-06", "bracket": "Winners"}]}, "18": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 18, "winner_score": 2, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "22": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 48, "winner_score": 2, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}}, "1": {"5": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 5, "winner_score": 2, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "2": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 2, "winner_score": 3, "loser_score": 1, "date": "2026-05-06", "bracket": "Winners"}]}, "53": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 1, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}}, "8": {"9": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 9, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "35": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 8, "winner_score": 2, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "7": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 7, "winner_score": 3, "loser_score": 1, "date": "2026-05-06", "bracket": "Winners"}]}}, "22": {"21": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 21, "winner_score": 3, "loser_score": 1, "date": "2026-05-06", "bracket": "Winners"}]}, "48": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 48, "winner_score": 2, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "19": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 22, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}}, "25": {"18": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 18, "winner_score": 2, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "27": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 27, "winner_score": 4, "loser_score": 1, "date": "2026-05-06", "bracket": "Winners"}]}, "26": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 25, "winner_score": 3, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}}, "6": {"18": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 18, "winner_score": 2, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "5": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 6, "winner_score": 3, "loser_score": 2, "date": "2026-05-06", "bracket": "Winners"}]}, "43": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 43, "winner_score": 3, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}, "3": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 6, "winner_score": 3, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}}, "45": {"49": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 49, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "44": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 44, "winner_score": 3, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}, "10": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 45, "winner_score": 3, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}}, "46": {"11": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 11, "winner_score": 3, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}, "29": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 29, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "31": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 46, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}}, "16": {"14": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 14, "winner_score": 3, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}, "29": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 29, "winner_score": 2, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}}, "12": {"49": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 49, "winner_score": 2, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "11": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 11, "winner_score": 4, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}, "32": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 12, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}}, "13": {"14": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 14, "winner_score": 3, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}, "49": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 49, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}}, "4": {"5": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 5, "winner_score": 2, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "3": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 3, "winner_score": 4, "loser_score": 2, "date": "2026-05-06", "bracket": "Winners"}]}}, "51": {"33": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 33, "winner_score": 3, "loser_score": 1, "date": "2026-05-06", "bracket": "Winners"}]}, "9": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 9, "winner_score": 2, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}}, "35": {"38": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 38, "winner_score": 4, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}, "36": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 35, "winner_score": 3, "loser_score": 1, "date": "2026-05-06", "bracket": "Winners"}]}, "8": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 8, "winner_score": 2, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}}, "7": {"44": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 44, "winner_score": 4, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}, "36": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 36, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "8": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 7, "winner_score": 3, "loser_score": 1, "date": "2026-05-06", "bracket": "Winners"}]}}, "19": {"20": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 20, "winner_score": 3, "loser_score": 1, "date": "2026-05-06", "bracket": "Winners"}]}, "22": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 22, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}}, "31": {"46": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 46, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "32": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 32, "winner_score": 3, "loser_score": 1, "date": "2026-05-06", "bracket": "Winners"}]}}, "32": {"50": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 50, "winner_score": 3, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}, "12": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 12, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "31": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 32, "winner_score": 3, "loser_score": 1, "date": "2026-05-06", "bracket": "Winners"}]}}, "3": {"40": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 40, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "6": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 6, "winner_score": 3, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}, "4": {"my_wins": 1, "opp_wins": 0, "total": 1, "matches": [{"winner_id": 3, "winner_score": 4, "loser_score": 2, "date": "2026-05-06", "bracket": "Winners"}]}}, "52": {"5": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 5, "winner_score": 2, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "39": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 39, "winner_score": 3, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}}, "47": {"28": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 28, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "17": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 17, "winner_score": 4, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}}, "53": {"41": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 41, "winner_score": 4, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}, "1": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 1, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}}, "23": {"24": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 24, "winner_score": 3, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}, "21": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 21, "winner_score": 2, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}}, "34": {"33": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 33, "winner_score": 3, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}, "10": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 10, "winner_score": 2, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}}, "26": {"28": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 28, "winner_score": 1, "loser_score": 0, "date": "2026-05-06", "bracket": "Losers"}]}, "25": {"my_wins": 0, "opp_wins": 1, "total": 1, "matches": [{"winner_id": 25, "winner_score": 3, "loser_score": 0, "date": "2026-05-06", "bracket": "Winners"}]}}};
+    </script>
+</body>
+</html>
